@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>看板搭建器 — DataViz Dashboard</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/gridstack@10.3.0/dist/gridstack.min.css">
+<style>
+:root {
+    --bg: #0a0f1d; --surface: rgba(15,21,37,0.7); --border: rgba(255,255,255,0.06);
+    --primary: #6c83f7; --accent: #f72585; --text: #e0e4f0; --text-muted: #64748b;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif; --mono: 'Consolas', 'Fira Code', monospace;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+.page { max-width: 1700px; margin: 0 auto; padding: 16px; }
+
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.topbar h1 { font-size: 1.3rem; display: flex; align-items: center; gap: 10px; }
+.badge { font-size: 0.68rem; background: rgba(108,131,247,0.15); color: var(--primary); padding: 2px 10px; border-radius: 999px; font-weight: 600; }
+.btn { display: inline-block; padding: 7px 16px; border-radius: 999px; font-size: 0.8rem; font-weight: 600; text-decoration: none; cursor: pointer; border: none; transition: all 0.2s; font-family: inherit; color: var(--text); background: var(--surface); backdrop-filter: blur(12px); border: 1px solid var(--border); }
+.btn:hover { border-color: var(--primary); box-shadow: 0 0 16px rgba(108,131,247,0.1); }
+.btn-primary { background: linear-gradient(135deg, var(--primary), #4a62e1); color: #fff; border: none; }
+.btn-primary:hover { box-shadow: 0 0 24px rgba(108,131,247,0.3); }
+.btn-danger { border-color: rgba(231,76,60,0.3); color: #e74c3c; }
+.btn-danger:hover { background: rgba(231,76,60,0.1); border-color: #e74c3c; }
+select.btn { appearance: none; -webkit-appearance: none; }
+
+.workspace { display: grid; grid-template-columns: 260px 1fr 280px; gap: 12px; min-height: calc(100vh - 80px); }
+.workspace.no-inspector { grid-template-columns: 260px 1fr; }
+
+/* Left sidebar */
+.panel { background: var(--surface); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+.panel-header { padding: 10px 16px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+.panel-body { flex: 1; overflow-y: auto; padding: 12px; }
+
+.comp-types { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-bottom: 16px; }
+.comp-type { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 8px; padding: 10px 6px; text-align: center; cursor: pointer; transition: all 0.2s; font-size: 0.72rem; color: var(--text-muted); }
+.comp-type:hover { border-color: var(--primary); color: var(--text); background: rgba(108,131,247,0.06); }
+.comp-type .c-icon { font-size: 1.3rem; display: block; margin-bottom: 4px; }
+
+.ds-item { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; margin-bottom: 6px; font-size: 0.75rem; display: flex; align-items: center; justify-content: space-between; }
+.ds-item .ds-type { color: var(--text-muted); font-family: var(--mono); font-size: 0.65rem; }
+
+/* Center canvas */
+.canvas-area { background: var(--surface); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+.canvas-toolbar { padding: 8px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); }
+.quick-actions { display: flex; gap: 4px; }
+.quick-actions button { padding: 3px 10px; font-size: 0.68rem; }
+
+/* Gridstack overrides */
+.grid-stack { flex: 1; background: #0a0f1d; border-radius: 0 0 12px 12px; }
+.grid-stack-item-content {
+    background: var(--surface) !important; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border) !important; border-radius: 10px !important;
+    display: flex; flex-direction: column; overflow: hidden;
+    cursor: grab; transition: border-color 0.2s;
+}
+.grid-stack-item-content:hover { border-color: rgba(108,131,247,0.3) !important; }
+.grid-stack-item-content.selected { border-color: var(--primary) !important; box-shadow: 0 0 16px rgba(108,131,247,0.2); }
+.grid-stack-item-content .gs-header { padding: 6px 12px; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.04); flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; }
+.grid-stack-item-content .gs-header .gs-type-badge { font-size: 0.6rem; color: var(--primary); }
+.grid-stack-item-content .gs-body { flex: 1; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; color: var(--text-muted); padding: 10px; }
+.grid-stack-item-content .gs-body .gs-placeholder { text-align: center; }
+.grid-stack-item-content .gs-body .gs-placeholder .icon { font-size: 1.5rem; margin-bottom: 4px; }
+
+/* Right inspector */
+.inspector { background: var(--surface); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden; }
+.inspector .panel-body { padding: 14px; }
+.form-group { margin-bottom: 12px; }
+.form-group label { display: block; font-size: 0.72rem; color: var(--text-muted); margin-bottom: 3px; font-weight: 500; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; padding: 7px 10px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.8rem; font-family: inherit; outline: none; }
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--primary); }
+.form-group textarea { font-family: var(--mono); font-size: 0.7rem; resize: vertical; min-height: 60px; }
+.form-group select option { background: #0f1525; color: #e0e4f0; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.empty-inspector { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; color: var(--text-muted); text-align: center; }
+.empty-inspector .icon { font-size: 3rem; margin-bottom: 12px; opacity: 0.5; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 999; align-items: center; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal { background: rgba(15,21,37,0.96); backdrop-filter: blur(20px); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px; padding: 28px; width: 92%; max-width: 460px; }
+.modal h3 { margin-bottom: 18px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+@media (max-width: 768px) {
+    .workspace { grid-template-columns: 1fr; }
+    .workspace.no-inspector { grid-template-columns: 1fr; }
+    .grid-stack { min-height: 400px; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+    <div class="topbar">
+        <h1><span>看板搭建器</span><span class="badge" id="status-badge">ready</span></h1>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <select class="btn" id="dashboard-select"><option value="">— 加载已有看板 —</option></select>
+            <button class="btn btn-primary" id="save-btn">保存</button>
+            <button class="btn" id="preview-btn">预览</button>
+            <button class="btn btn-danger" id="delete-btn" style="display:none">删除</button>
+            <button class="btn" id="new-ds-btn">+ 数据源</button>
+            <a href="/" class="btn">首页</a>
+            <span id="user-display" style="font-size:0.72rem;color:var(--text-muted)"></span>
+        </div>
+    </div>
+
+    <div class="workspace no-inspector" id="workspace">
+        <!-- Left sidebar -->
+        <div class="panel">
+            <div class="panel-header">组件 &amp; 数据源</div>
+            <div class="panel-body">
+                <div class="comp-types">
+                    <div class="comp-type" data-type="echarts_line"><span class="c-icon">📈</span>折线图</div>
+                    <div class="comp-type" data-type="echarts_bar"><span class="c-icon">📊</span>柱状图</div>
+                    <div class="comp-type" data-type="echarts_area"><span class="c-icon">📉</span>面积图</div>
+                    <div class="comp-type" data-type="echarts_pie"><span class="c-icon">🥧</span>饼图</div>
+                    <div class="comp-type" data-type="stat_card"><span class="c-icon">💎</span>数值卡</div>
+                    <div class="comp-type" data-type="echarts_line" style="grid-column:span 2"><span class="c-icon">📋</span>文本块</div>
+                </div>
+                <div style="font-size:0.7rem;color:var(--text-muted);margin-bottom:6px;font-weight:600">数据源</div>
+                <div id="ds-list"><div style="color:var(--text-muted);font-size:0.7rem;text-align:center;padding:12px;">暂无</div></div>
+            </div>
+        </div>
+
+        <!-- Canvas -->
+        <div class="canvas-area">
+            <div class="canvas-toolbar">
+                <span id="canvas-info">12 列网格 · 拖拽调整位置和大小</span>
+                <div class="quick-actions">
+                    <button class="btn" id="clear-selection">清除选择</button>
+                    <button class="btn" id="show-json-btn">JSON 编辑器</button>
+                </div>
+            </div>
+            <div class="grid-stack" id="grid-stack"></div>
+        </div>
+
+        <!-- Inspector (hidden by default) -->
+        <div class="inspector" id="inspector" style="display:none">
+            <div class="panel-header">组件配置</div>
+            <div class="panel-body" id="inspector-body">
+                <div class="empty-inspector">
+                    <div class="icon">👆</div>
+                    <p>点击画布中的组件<br>来编辑配置</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JSON Editor Modal -->
+<div class="modal-overlay" id="json-modal">
+    <div class="modal" style="max-width:700px">
+        <h3>Canvas Schema JSON</h3>
+        <textarea id="json-editor" style="width:100%;height:450px;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:var(--mono);font-size:0.72rem;padding:14px;resize:vertical;outline:none" spellcheck="false"></textarea>
+        <div class="modal-actions" style="justify-content:space-between">
+            <span style="font-size:0.7rem;color:var(--text-muted)">直接编辑 JSON，点击应用后画布和配置面板会同步更新</span>
+            <div style="display:flex;gap:8px">
+                <button class="btn" id="json-cancel">取消</button>
+                <button class="btn btn-primary" id="json-apply">应用 JSON</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Datasource Modal -->
+<div class="modal-overlay" id="ds-modal">
+    <div class="modal">
+        <h3>新建数据源</h3>
+        <div class="form-group"><label>名称</label><input type="text" id="ds-name" placeholder="例如：生产数据库"></div>
+        <div class="form-group"><label>类型</label><select id="ds-type"><option value="mysql">MySQL</option><option value="postgresql">PostgreSQL</option><option value="sqlite">SQLite</option><option value="http_api">HTTP API</option></select></div>
+        <div class="form-group"><label>连接配置 (JSON)</label><textarea id="ds-config" placeholder='MySQL: {"host":"127.0.0.1","port":3306,"user":"root","password":"","database":"test"}'></textarea></div>
+        <div class="modal-actions">
+            <button class="btn" id="ds-cancel">取消</button>
+            <button class="btn btn-primary" id="ds-save">保存</button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/gridstack@10.3.0/dist/gridstack-all.js"></script>
+<script>
+(function () {
+    var grid, currentBoardId = null, datasources = [], selectedCompId = null;
+
+    // Auth check
+    var token = localStorage.getItem("dv_token");
+    if (!token) { window.location.href = "/login"; }
+    var user = JSON.parse(localStorage.getItem("dv_user") || "null");
+    var userEl = document.getElementById("user-display");
+    if (user && userEl) { userEl.textContent = user.username; }
+
+    function authFetch(url, opts) {
+        opts = opts || {};
+        var headers = opts.headers || {};
+        var token = localStorage.getItem("dv_token");
+        if (token) { headers["Authorization"] = "Bearer " + token; }
+        opts.headers = headers;
+        return fetch(url, opts);
+    }
+
+    var defaultSchema = {
+        version: 1,
+        canvas: { cols: 12, rowHeight: 80, background: "#0a0f1d" },
+        components: []
+    };
+
+    var currentSchema = JSON.parse(JSON.stringify(defaultSchema));
+
+    // ── Init GridStack ───────────────────────────────────────
+    grid = GridStack.init({
+        column: 12,
+        cellHeight: 80,
+        margin: 8,
+        float: true,
+        animate: true,
+        removable: '.trash',
+    }, '#grid-stack');
+
+    // ── Load dashboards ──────────────────────────────────────
+    function loadDashboards() {
+        authFetch("/api/dashboard/list")
+            .then(function (r) { return r.json(); })
+            .then(function (boards) {
+                var sel = document.getElementById("dashboard-select");
+                sel.innerHTML = '<option value="">— 加载已有看板 —</option>';
+                boards.forEach(function (b) {
+                    sel.innerHTML += '<option value="' + b.id + '">' + b.name + '</option>';
+                });
+            });
+    }
+    loadDashboards();
+
+    document.getElementById("dashboard-select").addEventListener("change", function () {
+        var id = this.value; if (!id) return;
+        currentBoardId = parseInt(id);
+        authFetch("/api/dashboard/" + id).then(function (r) { return r.json(); }).then(function (b) {
+            currentSchema = b.canvas_json || JSON.parse(JSON.stringify(defaultSchema));
+            reloadCanvas();
+            document.getElementById("status-badge").textContent = "#" + b.id + " — " + b.name;
+            document.getElementById("delete-btn").style.display = "inline-block";
+            selectedCompId = null;
+            showInspector(null);
+        });
+    });
+
+    // ── Load datasources ─────────────────────────────────────
+    function loadDS() {
+        authFetch("/api/datasources").then(function (r) { return r.json(); }).then(function (rows) {
+            datasources = rows;
+            var list = document.getElementById("ds-list");
+            if (!rows.length) { list.innerHTML = '<div style="color:var(--text-muted);font-size:0.7rem;text-align:center;padding:12px;">暂无</div>'; return; }
+            list.innerHTML = rows.map(function (d) {
+                return '<div class="ds-item"><span>' + d.name + '</span><span class="ds-type">' + d.type + '</span></div>';
+            }).join("");
+        });
+    }
+    loadDS();
+
+    // ── Reload canvas from currentSchema ─────────────────────
+    function reloadCanvas() {
+        grid.removeAll(true);
+        if (!currentSchema.components) return;
+        currentSchema.components.forEach(function (comp) {
+            addGridItem(comp);
+        });
+    }
+
+    function addGridItem(comp) {
+        var layout = comp.layout || { x: 0, y: 0, w: 4, h: 3 };
+        var typeInfo = getTypeInfo(comp.type);
+        var el = document.createElement("div");
+        el.className = "grid-stack-item";
+        el.setAttribute("gs-id", comp.id);
+        el.setAttribute("gs-x", layout.x);
+        el.setAttribute("gs-y", layout.y);
+        el.setAttribute("gs-w", layout.w);
+        el.setAttribute("gs-h", layout.h);
+        el.innerHTML = '<div class="grid-stack-item-content" data-comp-id="' + comp.id + '">' +
+            '<div class="gs-header"><span>' + (comp.title || "未命名") + '</span><span class="gs-type-badge">' + typeInfo.label + '</span></div>' +
+            '<div class="gs-body"><div class="gs-placeholder"><div class="icon">' + typeInfo.icon + '</div>' + comp.type + '</div></div>' +
+            '</div>';
+        grid.addWidget(el);
+
+        // Click to select
+        el.querySelector(".grid-stack-item-content").addEventListener("click", function (e) {
+            e.stopPropagation();
+            selectComponent(comp.id);
+        });
+    }
+
+    // ── Select component & show inspector ────────────────────
+    function selectComponent(compId) {
+        selectedCompId = compId;
+        document.querySelectorAll(".grid-stack-item-content").forEach(function (el) {
+            el.classList.remove("selected");
+        });
+        var el = document.querySelector('[data-comp-id="' + compId + '"]');
+        if (el) el.classList.add("selected");
+        showInspector(compId);
+    }
+
+    document.getElementById("clear-selection").addEventListener("click", function () {
+        selectedCompId = null;
+        document.querySelectorAll(".grid-stack-item-content").forEach(function (el) { el.classList.remove("selected"); });
+        showInspector(null);
+    });
+
+    // ── Inspector rendering ──────────────────────────────────
+    function showInspector(compId) {
+        var inspector = document.getElementById("inspector");
+        var body = document.getElementById("inspector-body");
+        var workspace = document.getElementById("workspace");
+
+        if (!compId) {
+            inspector.style.display = "none";
+            workspace.classList.add("no-inspector");
+            return;
+        }
+
+        workspace.classList.remove("no-inspector");
+        inspector.style.display = "flex";
+
+        var comp = currentSchema.components.find(function (c) { return c.id === compId; });
+        if (!comp) { body.innerHTML = '<div class="empty-inspector"><p>Component not found</p></div>'; return; }
+
+        // Generate datasource options
+        var dsOptions = datasources.map(function (d) {
+            return '<option value="' + d.id + '" ' + (comp.datasource_id === d.id ? 'selected' : '') + '>' + d.name + ' (' + d.type + ')</option>';
+        }).join("");
+
+        body.innerHTML =
+            '<div class="form-row">' +
+            '<div class="form-group"><label>标题</label><input type="text" id="insp-title" value="' + escapeAttr(comp.title || "") + '"></div>' +
+            '<div class="form-group"><label>类型</label><select id="insp-type">' +
+            '<option value="echarts_line" ' + (comp.type === 'echarts_line' ? 'selected' : '') + '>折线图</option>' +
+            '<option value="echarts_bar" ' + (comp.type === 'echarts_bar' ? 'selected' : '') + '>柱状图</option>' +
+            '<option value="echarts_area" ' + (comp.type === 'echarts_area' ? 'selected' : '') + '>面积图</option>' +
+            '<option value="echarts_pie" ' + (comp.type === 'echarts_pie' ? 'selected' : '') + '>饼图</option>' +
+            '<option value="stat_card" ' + (comp.type === 'stat_card' ? 'selected' : '') + '>数值卡</option>' +
+            '</select></div></div>' +
+
+            '<div class="form-group"><label>数据源</label><select id="insp-ds">' + dsOptions + '</select></div>' +
+
+            '<div class="form-group"><label>Query SQL / API URL</label><textarea id="insp-sql" rows="4">' +
+            escapeAttr((comp.query_config && comp.query_config.sql) || (comp.query_config && comp.query_config.url) || "") +
+            '</textarea></div>' +
+
+            (comp.type === "stat_card" ?
+                '<div class="form-group"><label>取值字段</label><input type="text" id="insp-field" value="' + escapeAttr((comp.display_config && comp.display_config.field) || "") + '"></div>' +
+                '<div class="form-group"><label>前缀</label><input type="text" id="insp-prefix" value="' + escapeAttr((comp.display_config && comp.display_config.prefix) || "") + '"></div>'
+            : "") +
+
+            (comp.type === "echarts_pie" ?
+                '<div class="form-row">' +
+                '<div class="form-group"><label>名称字段</label><input type="text" id="insp-nameField" value="' + escapeAttr((comp.chart_config && comp.chart_config.nameField) || "name") + '"></div>' +
+                '<div class="form-group"><label>值字段</label><input type="text" id="insp-valueField" value="' + escapeAttr((comp.chart_config && comp.chart_config.valueField) || "value") + '"></div>' +
+                '</div>'
+            : "") +
+
+            (comp.type.match(/echarts_line|echarts_bar|echarts_area/) ?
+                '<div class="form-group"><label>X 轴字段</label><input type="text" id="insp-xAxis" value="' + escapeAttr((comp.chart_config && comp.chart_config.xAxis) || "") + '"></div>' +
+                '<div class="form-group"><label>Series 配置 (JSON)</label><textarea id="insp-series" rows="5">' +
+                escapeAttr(JSON.stringify((comp.chart_config && comp.chart_config.series) || [], null, 1)) +
+                '</textarea></div>'
+            : "") +
+
+            '<button class="btn btn-primary" id="insp-apply" style="width:100%;margin-top:6px">应用配置</button>' +
+            '<button class="btn btn-danger" id="insp-delete" style="width:100%;margin-top:6px">删除组件</button>';
+
+        // Bind events
+        document.getElementById("insp-apply").addEventListener("click", function () { applyInspector(comp); });
+        document.getElementById("insp-delete").addEventListener("click", function () { deleteComponent(comp.id); });
+    }
+
+    function applyInspector(comp) {
+        comp.title = document.getElementById("insp-title").value.trim();
+        comp.type = document.getElementById("insp-type").value;
+        comp.datasource_id = parseInt(document.getElementById("insp-ds").value);
+
+        var sql = document.getElementById("insp-sql").value.trim();
+        if (sql) {
+            if (comp.type === "http_api") {
+                if (sql.match(/^https?:\/\//)) comp.query_config = { url: sql };
+                else comp.query_config = { sql: sql };
+            } else {
+                comp.query_config = { sql: sql };
+            }
+        }
+
+        if (comp.type === "stat_card") {
+            comp.display_config = {
+                field: document.getElementById("insp-field").value.trim(),
+                prefix: document.getElementById("insp-prefix").value.trim(),
+                format: "number",
+            };
+        }
+
+        if (comp.type === "echarts_pie") {
+            comp.chart_config = {
+                nameField: document.getElementById("insp-nameField").value.trim() || "name",
+                valueField: document.getElementById("insp-valueField").value.trim() || "value",
+            };
+        }
+
+        if (comp.type.match(/echarts_line|echarts_bar|echarts_area/)) {
+            comp.chart_config = comp.chart_config || {};
+            comp.chart_config.xAxis = document.getElementById("insp-xAxis").value.trim();
+            try {
+                comp.chart_config.series = JSON.parse(document.getElementById("insp-series").value);
+            } catch (e) {
+                comp.chart_config.series = [];
+            }
+        }
+
+        syncFromGrid();
+        document.getElementById("status-badge").textContent = "updated " + comp.id;
+    }
+
+    function deleteComponent(compId) {
+        if (!confirm("删除该组件？")) return;
+        currentSchema.components = currentSchema.components.filter(function (c) { return c.id !== compId; });
+        syncFromGrid();
+        reloadCanvas();
+        selectedCompId = null;
+        showInspector(null);
+        document.getElementById("status-badge").textContent = "deleted " + compId;
+    }
+
+    // ── Sync grid positions → currentSchema ─────────────────
+    function syncFromGrid() {
+        grid.engine.nodes.forEach(function (node) {
+            var comp = currentSchema.components.find(function (c) { return c.id === node.id; });
+            if (comp) {
+                comp.layout = { x: node.x, y: node.y, w: node.w, h: node.h };
+            }
+        });
+    }
+
+    // ── Add new component from sidebar ───────────────────────
+    document.querySelectorAll(".comp-type").forEach(function (el) {
+        el.addEventListener("click", function () {
+            var type = this.getAttribute("data-type");
+            var typeInfo = getTypeInfo(type);
+            if (!currentSchema.components) currentSchema.components = [];
+            var idx = currentSchema.components.length + 1;
+            var id = "comp_" + String(idx).padStart(3, "0");
+
+            var comp = {
+                id: id, type: type,
+                title: typeInfo.label + "-" + idx,
+                layout: { x: 0, y: grid.engine.nodes.length * 3, w: type === "stat_card" ? 3 : 4, h: type === "stat_card" ? 2 : 3 },
+                datasource_id: datasources.length > 0 ? datasources[0].id : 1,
+                query_config: {},
+                chart_config: {},
+            };
+
+            if (type === "stat_card") {
+                comp.display_config = { prefix: "", format: "number", field: "" };
+            } else if (type === "echarts_pie") {
+                comp.chart_config = { nameField: "name", valueField: "value" };
+            } else {
+                comp.chart_config = { xAxis: "", series: [] };
+            }
+
+            currentSchema.components.push(comp);
+            addGridItem(comp);
+            syncFromGrid();
+            document.getElementById("status-badge").textContent = "added " + type;
+        });
+    });
+
+    // ── Grid change handler ──────────────────────────────────
+    grid.on('change', function () { syncFromGrid(); });
+
+    // ── Save ─────────────────────────────────────────────────
+    document.getElementById("save-btn").addEventListener("click", function () {
+        syncFromGrid();
+        var name = prompt("看板名称：", "我的看板"); if (!name) return;
+        currentSchema.version = (currentSchema.version || 0) + 1;
+        var payload = { name: name, canvas_json: currentSchema, change_note: "Update" };
+        var url = currentBoardId ? "/api/dashboard/" + currentBoardId : "/api/dashboard";
+        var method = currentBoardId ? "PUT" : "POST";
+        authFetch(url, { method: method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+            .then(function (r) { return r.json(); })
+            .then(function (board) {
+                currentBoardId = board.id;
+                document.getElementById("status-badge").textContent = "saved #" + board.id;
+                document.getElementById("delete-btn").style.display = "inline-block";
+                loadDashboards();
+            });
+    });
+
+    // ── Preview ──────────────────────────────────────────────
+    document.getElementById("preview-btn").addEventListener("click", function () {
+        if (currentBoardId) { window.open("/view/" + currentBoardId, "_blank"); }
+        else { alert("请先保存看板"); }
+    });
+
+    // ── Delete ───────────────────────────────────────────────
+    document.getElementById("delete-btn").addEventListener("click", function () {
+        if (!currentBoardId || !confirm("确定要删除该看板吗？不可撤销。")) return;
+        authFetch("/api/dashboard/" + currentBoardId, { method: "DELETE" })
+            .then(function () {
+                currentBoardId = null;
+                currentSchema = JSON.parse(JSON.stringify(defaultSchema));
+                reloadCanvas();
+                document.getElementById("dashboard-select").value = "";
+                document.getElementById("delete-btn").style.display = "none";
+                document.getElementById("status-badge").textContent = "deleted";
+                loadDashboards();
+            });
+    });
+
+    // ── JSON Editor Modal ────────────────────────────────────
+    var jsonOverlay = document.getElementById("json-modal");
+    document.getElementById("show-json-btn").addEventListener("click", function () {
+        syncFromGrid();
+        document.getElementById("json-editor").value = JSON.stringify(currentSchema, null, 2);
+        jsonOverlay.classList.add("active");
+    });
+    document.getElementById("json-cancel").addEventListener("click", function () { jsonOverlay.classList.remove("active"); });
+    jsonOverlay.addEventListener("click", function (e) { if (e.target === jsonOverlay) jsonOverlay.classList.remove("active"); });
+    document.getElementById("json-apply").addEventListener("click", function () {
+        try {
+            currentSchema = JSON.parse(document.getElementById("json-editor").value);
+            reloadCanvas();
+            jsonOverlay.classList.remove("active");
+            showInspector(null);
+            document.getElementById("status-badge").textContent = "JSON applied";
+        } catch (e) { alert("JSON 格式错误: " + e.message); }
+    });
+
+    // ── Datasource Modal ─────────────────────────────────────
+    var dsOverlay = document.getElementById("ds-modal");
+    document.getElementById("new-ds-btn").addEventListener("click", function () {
+        dsOverlay.classList.add("active"); document.getElementById("ds-name").focus();
+    });
+    document.getElementById("ds-cancel").addEventListener("click", function () { dsOverlay.classList.remove("active"); });
+    dsOverlay.addEventListener("click", function (e) { if (e.target === dsOverlay) dsOverlay.classList.remove("active"); });
+    document.getElementById("ds-save").addEventListener("click", function () {
+        var name = document.getElementById("ds-name").value.trim(); if (!name) return;
+        var type = document.getElementById("ds-type").value;
+        try { var config = JSON.parse(document.getElementById("ds-config").value.trim()); } catch (e) { alert("JSON error"); return; }
+        authFetch("/api/datasource", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name, type: type, config: config }) })
+            .then(function () { dsOverlay.classList.remove("active"); loadDS(); document.getElementById("status-badge").textContent = "datasource created"; });
+    });
+
+    // ── Helpers ──────────────────────────────────────────────
+    function getTypeInfo(type) {
+        var map = {
+            echarts_line: { label: "折线图", icon: "📈" },
+            echarts_bar: { label: "柱状图", icon: "📊" },
+            echarts_area: { label: "面积图", icon: "📉" },
+            echarts_pie: { label: "饼图", icon: "🥧" },
+            stat_card: { label: "数值卡", icon: "💎" }
+        };
+        return map[type] || { label: type, icon: "📌" };
+    }
+
+    function escapeAttr(s) {
+        return (s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+})();
+</script>
+</body>
+</html>

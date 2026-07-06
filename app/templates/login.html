@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 — DataViz Dashboard</title>
+<style>
+:root {
+    --bg: #0a0f1d; --surface: rgba(15,21,37,0.7); --border: rgba(255,255,255,0.06);
+    --primary: #6c83f7; --accent: #f72585; --text: #e0e4f0; --text-muted: #64748b;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+.login-card { background: var(--surface); backdrop-filter: blur(16px); border: 1px solid var(--border); border-radius: 16px; padding: 40px; width: 380px; max-width: 90vw; }
+.login-card h1 { text-align: center; margin-bottom: 8px; font-size: 1.5rem; }
+.login-card h1 span { background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.login-card .sub { text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 28px; }
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-size: 0.78rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.form-group input { width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.25); color: var(--text); font-size: 0.95rem; font-family: inherit; outline: none; transition: border-color 0.2s; }
+.form-group input:focus { border-color: var(--primary); }
+.btn { width: 100%; padding: 11px; border-radius: 10px; font-size: 0.95rem; font-weight: 600; cursor: pointer; border: none; font-family: inherit; transition: all 0.2s; }
+.btn-primary { background: linear-gradient(135deg, var(--primary), #4a62e1); color: #fff; }
+.btn-primary:hover { box-shadow: 0 0 24px rgba(108,131,247,0.4); }
+.error-msg { color: #e74c3c; font-size: 0.82rem; text-align: center; margin-bottom: 12px; min-height: 20px; }
+.home-link { display: block; text-align: center; margin-top: 16px; color: var(--text-muted); font-size: 0.8rem; text-decoration: none; }
+.home-link:hover { color: var(--primary); }
+.tabs { display: flex; margin-bottom: 24px; border-bottom: 1px solid var(--border); }
+.tab { flex: 1; text-align: center; padding: 10px 0; cursor: pointer; font-size: 0.9rem; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all 0.2s; }
+.tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+</style>
+</head>
+<body>
+<div class="login-card">
+    <h1><span>DataViz</span> Dashboard</h1>
+    <p class="sub">企业级低代码可视化数据看板</p>
+
+    <div class="tabs" id="tabs">
+        <div class="tab active" data-tab="login">登录</div>
+        <div class="tab" data-tab="register">注册</div>
+    </div>
+
+    <div class="error-msg" id="error"></div>
+
+    <div class="tab-content active" id="tab-login">
+        <form id="login-form">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" name="username" placeholder="admin" required autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" name="password" placeholder="••••••" required autocomplete="current-password">
+            </div>
+            <button type="submit" class="btn btn-primary">登录</button>
+        </form>
+    </div>
+
+    <div class="tab-content" id="tab-register">
+        <form id="register-form">
+            <div class="form-group">
+                <label>用户名</label>
+                <input type="text" name="username" placeholder="选择用户名" required minlength="3" autocomplete="username">
+            </div>
+            <div class="form-group">
+                <label>密码</label>
+                <input type="password" name="password" placeholder="至少6位密码" required minlength="6" autocomplete="new-password">
+            </div>
+            <button type="submit" class="btn btn-primary">注册</button>
+        </form>
+    </div>
+
+    <a href="/" class="home-link">返回首页</a>
+</div>
+
+<script>
+(function () {
+    var errorEl = document.getElementById("error");
+
+    // Tab switching
+    document.querySelectorAll(".tab").forEach(function (t) {
+        t.addEventListener("click", function () {
+            document.querySelectorAll(".tab").forEach(function (x) { x.classList.remove("active"); });
+            document.querySelectorAll(".tab-content").forEach(function (x) { x.classList.remove("active"); });
+            t.classList.add("active");
+            document.getElementById("tab-" + t.dataset.tab).classList.add("active");
+            errorEl.textContent = "";
+        });
+    });
+
+    function showError(msg) { errorEl.textContent = msg; }
+
+    function saveAuth(data) {
+        localStorage.setItem("dv_token", data.token);
+        localStorage.setItem("dv_user", JSON.stringify(data.user));
+        window.location.href = "/";
+    }
+
+    document.getElementById("login-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var fd = new FormData(this);
+        fetch("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: fd.get("username"), password: fd.get("password") }),
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+          .then(function (r) {
+              if (r.ok) { saveAuth(r.data); } else { showError(r.data.error); }
+          }).catch(function () { showError("网络错误"); });
+    });
+
+    document.getElementById("register-form").addEventListener("submit", function (e) {
+        e.preventDefault();
+        var fd = new FormData(this);
+        fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: fd.get("username"), password: fd.get("password") }),
+        }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+          .then(function (r) {
+              if (r.ok) { saveAuth(r.data); } else { showError(r.data.error); }
+          }).catch(function () { showError("网络错误"); });
+    });
+})();
+</script>
+</body>
+</html>

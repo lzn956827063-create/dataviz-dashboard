@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>看板预览 — DataViz Dashboard</title>
+<style>
+:root {
+    --bg: #0a0f1d; --surface: rgba(15,21,37,0.7); --border: rgba(255,255,255,0.06);
+    --primary: #6c83f7; --accent: #f72585; --text: #e0e4f0; --text-muted: #64748b;
+    --font: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; }
+.page { max-width: 1500px; margin: 0 auto; padding: 24px; }
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.topbar h1 { font-size: 1.5rem; }
+.topbar .badge { font-size: 0.75rem; background: rgba(108,131,247,0.15); color: var(--primary); padding: 4px 12px; border-radius: 999px; font-weight: 600; letter-spacing: 0.5px; }
+.btn { display: inline-block; padding: 8px 18px; border-radius: 999px; font-size: 0.85rem; font-weight: 600; text-decoration: none; cursor: pointer; border: none; transition: all 0.2s; font-family: inherit; color: var(--text); background: var(--surface); backdrop-filter: blur(12px); border: 1px solid var(--border); }
+.btn:hover { border-color: var(--primary); box-shadow: 0 0 20px rgba(108,131,247,0.1); }
+
+/* CSS Grid Canvas */
+.db-grid {
+    --cols: 12; --row-h: 80px;
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    grid-auto-rows: var(--row-h);
+    gap: 16px;
+    background: var(--bg);
+    border-radius: 16px;
+    padding: 16px;
+    border: 1px solid var(--border);
+    min-height: 400px;
+}
+.grid-item { display: flex; min-height: 0; min-width: 0; }
+.grid-item-content {
+    flex: 1; background: var(--surface); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--border); border-radius: 12px; display: flex; flex-direction: column; overflow: hidden;
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+.grid-item-content:hover { border-color: rgba(108,131,247,0.25); box-shadow: 0 0 24px rgba(108,131,247,0.06); }
+.comp-header { padding: 8px 16px; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-bottom: 1px solid rgba(255,255,255,0.04); flex-shrink: 0; }
+.comp-body { flex: 1; display: flex; align-items: center; justify-content: center; overflow: hidden; min-height: 0; }
+.stat-value { font-size: 2.8rem; font-weight: 700; background: linear-gradient(135deg, var(--primary), var(--accent)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.loading-skeleton { width: 48px; height: 48px; border: 3px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+.comp-error { color: #e74c3c; font-size: 0.85rem; padding: 12px; text-align: center; }
+.empty-state { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 1.1rem; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 768px) { .db-grid { gap: 10px; padding: 10px; } .stat-value { font-size: 2rem; } }
+</style>
+</head>
+<body>
+<div class="page">
+    <div class="topbar">
+        <div style="display:flex;align-items:center;gap:12px">
+            <h1 id="board-title">看板预览</h1>
+            <span class="badge">v<span id="board-version">-</span></span>
+        </div>
+        <div style="display:flex;gap:8px">
+            <a href="/builder" class="btn">编辑</a>
+            <a href="/" class="btn">首页</a>
+            <span id="user-info" style="font-size:0.8rem;color:var(--text-muted)"></span>
+            <button id="logout-btn" class="btn" style="display:none">退出</button>
+        </div>
+    </div>
+    <div class="db-grid" id="dashboard-grid"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script>
+(function () {
+    var boardId = {{ board_id }};
+    var gridEl = document.getElementById("dashboard-grid");
+    var chartInstances = {};
+
+    function authFetch(url, opts) {
+        opts = opts || {};
+        var headers = opts.headers || {};
+        var token = localStorage.getItem("dv_token");
+        if (token) { headers["Authorization"] = "Bearer " + token; }
+        opts.headers = headers;
+        return fetch(url, opts);
+    }
+
+    // Check auth state
+    var user = JSON.parse(localStorage.getItem("dv_user") || "null");
+    if (user) {
+        document.getElementById("user-info").textContent = user.username;
+        document.getElementById("logout-btn").style.display = "";
+        document.getElementById("logout-btn").addEventListener("click", function () {
+            localStorage.removeItem("dv_token");
+            localStorage.removeItem("dv_user");
+            window.location.href = "/login";
+        });
+    }
+
+    authFetch("/api/dashboard/" + boardId)
+        .then(function (r) { return r.json(); })
+        .then(function (schema) {
+            document.getElementById("board-title").textContent = schema.name;
+            document.getElementById("board-version").textContent = (schema.canvas_json || {}).version || 1;
+
+            var canvas = schema.canvas_json || {};
+            var components = canvas.components || [];
+            var gridCfg = canvas.canvas || {};
+
+            gridEl.style.setProperty("--cols", gridCfg.cols || 12);
+            gridEl.style.setProperty("--row-h", (gridCfg.rowHeight || 80) + "px");
+            gridEl.style.background = gridCfg.background || "#0a0f1d";
+
+            if (!components.length) {
+                gridEl.innerHTML = '<div class="empty-state">No components in this dashboard.</div>';
+                return;
+            }
+
+            components.forEach(function (comp) {
+                createGridItem(comp);
+                loadData(comp);
+            });
+        })
+        .catch(function (err) {
+            gridEl.innerHTML = '<div class="empty-state">Failed: ' + err.message + '</div>';
+        });
+
+    function createGridItem(comp) {
+        var layout = comp.layout || { x: 0, y: 0, w: 4, h: 3 };
+        var el = document.createElement("div");
+        el.className = "grid-item";
+        el.id = "comp-" + comp.id;
+        el.style.gridColumn = (layout.x + 1) + " / span " + layout.w;
+        el.style.gridRow = (layout.y + 1) + " / span " + layout.h;
+        el.innerHTML = '<div class="grid-item-content">' +
+            '<div class="comp-header">' + (comp.title || "") + '</div>' +
+            '<div class="comp-body" id="body-' + comp.id + '"><div class="loading-skeleton"></div></div>' +
+            '</div>';
+        gridEl.appendChild(el);
+    }
+
+    function loadData(comp) {
+        authFetch("/api/component/data/" + boardId + "/" + comp.id)
+            .then(function (r) { return r.json(); })
+            .then(function (data) { renderComponent(comp, data); })
+            .catch(function (err) {
+                var body = document.getElementById("body-" + comp.id);
+                if (body) body.innerHTML = '<div class="comp-error">' + err.message + '</div>';
+            });
+    }
+
+    function renderComponent(comp, data) {
+        var body = document.getElementById("body-" + comp.id);
+        if (!body) return;
+
+        switch (comp.type) {
+            case "echarts_line": case "echarts_bar": case "echarts_area":
+                body.innerHTML = "";
+                var chart = echarts.init(body, "dark");
+                chart.setOption({
+                    tooltip: { trigger: "axis" },
+                    legend: { data: data.series.map(function (s) { return s.name; }), textStyle: { color: "#94a3b8" }, top: 0 },
+                    grid: { top: 36, right: 20, bottom: 28, left: 50 },
+                    xAxis: { type: "category", data: data.categories, axisLine: { lineStyle: { color: "#334155" } }, axisLabel: { color: "#94a3b8", fontSize: 10 } },
+                    yAxis: { type: "value", splitLine: { lineStyle: { color: "rgba(51,65,85,0.3)" } }, axisLabel: { color: "#94a3b8", fontSize: 10 } },
+                    series: data.series.map(function (s) { return { name: s.name, type: s.type || "line", data: s.data, smooth: s.type !== "bar", itemStyle: s.color ? { color: s.color } : undefined }; }),
+                });
+                chartInstances[comp.id] = chart;
+                break;
+
+            case "echarts_pie":
+                body.innerHTML = "";
+                var pie = echarts.init(body, "dark");
+                var sd = (data.series[0] && data.series[0].data) || [];
+                pie.setOption({
+                    tooltip: { trigger: "item" },
+                    legend: { orient: "vertical", right: 8, top: "center", textStyle: { color: "#94a3b8", fontSize: 10 } },
+                    series: [{ type: "pie", radius: ["42%", "70%"], center: ["38%", "50%"], data: sd, emphasis: { itemStyle: { shadowBlur: 8, shadowColor: "rgba(0,0,0,0.5)" } }, label: { color: "#94a3b8", fontSize: 10 } }],
+                });
+                chartInstances[comp.id] = pie;
+                break;
+
+            case "stat_card":
+                var prefix = (comp.display_config && comp.display_config.prefix) || "";
+                var val = data.value != null ? Number(data.value).toLocaleString() : "-";
+                body.innerHTML = '<div class="stat-value">' + prefix + val + '</div>';
+                break;
+
+            default:
+                body.innerHTML = '<div class="comp-error">Unknown: ' + comp.type + '</div>';
+        }
+    }
+
+    window.addEventListener("resize", function () {
+        Object.values(chartInstances).forEach(function (c) { c.resize(); });
+    });
+})();
+</script>
+</body>
+</html>
