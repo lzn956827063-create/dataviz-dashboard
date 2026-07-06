@@ -22,7 +22,7 @@ def _seed_demo():
     # Default admin user
     if User.query.first() is None:
         admin = User(username="admin")
-        admin.set_password("admin123")
+        admin.set_password("dv2026!Admin")
         db.session.add(admin)
 
     db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "dataviz.db")

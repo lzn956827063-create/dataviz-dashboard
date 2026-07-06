@@ -28,12 +28,12 @@ def api(method, path, data=None):
 # Login as admin
 print("Logging in as admin...")
 try:
-    r = api("POST", "/api/auth/login", {"username": "admin", "password": "admin123"})
+    r = api("POST", "/api/auth/login", {"username": "admin", "password": "dv2026!Admin"})
     TOKEN = r["token"]
     print(f"  Logged in as {r['user']['username']}")
 except Exception as e:
     print(f"  Login failed, trying register: {e}")
-    r = api("POST", "/api/auth/register", {"username": "admin", "password": "admin123"})
+    r = api("POST", "/api/auth/register", {"username": "admin", "password": "dv2026!Admin"})
     TOKEN = r["token"]
     print(f"  Registered and logged in")
 
