@@ -5,8 +5,9 @@ import urllib.request
 import os
 import urllib.error
 
-DB_PATH = r"D:\Claude\dataviz-dashboard\app\data\dataviz.db"
-BASE = "http://127.0.0.1:5001"
+import sys
+DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "app", "data", "dataviz.db")
+BASE = os.getenv("BASE_URL", "http://127.0.0.1:5001")
 
 TOKEN = None
 
