@@ -17,7 +17,7 @@ def list_demos():
 
 @dashboard_bp.route("/api/dashboard/list")
 def list_dashboards():
-    return jsonify([r.to_dict() for r in Dashboard.query.order_by(Dashboard.updated_at.desc()).all()])
+    return jsonify([r.to_dict() for r in Dashboard.query.filter_by(is_demo=False).order_by(Dashboard.updated_at.desc()).all()])
 
 @dashboard_bp.route("/api/dashboard/<int:board_id>", methods=["DELETE"])
 @login_required
