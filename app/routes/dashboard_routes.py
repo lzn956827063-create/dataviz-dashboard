@@ -9,7 +9,6 @@ dashboard_bp = Blueprint("dashboard", __name__)
 # ── Dashboard CRUD ─────────────────────────────────────────
 
 @dashboard_bp.route("/api/dashboard/list")
-@login_required
 def list_dashboards():
     return jsonify([r.to_dict() for r in Dashboard.query.order_by(Dashboard.updated_at.desc()).all()])
 
@@ -23,7 +22,6 @@ def delete_dashboard(board_id):
     return jsonify({"ok": True})
 
 @dashboard_bp.route("/api/dashboard/<int:board_id>")
-@login_required
 def get_dashboard(board_id):
     return jsonify(Dashboard.query.get_or_404(board_id).to_dict())
 
@@ -79,7 +77,6 @@ def rollback(board_id, version):
 # ── Data bridge API ────────────────────────────────────────
 
 @dashboard_bp.route("/api/component/data/<int:board_id>/<component_id>")
-@login_required
 def component_data(board_id, component_id):
     try:
         return jsonify(fetch_component_data(board_id, component_id))

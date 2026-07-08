@@ -94,7 +94,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
         });
     }
 
-    authFetch("/api/dashboard/" + boardId)
+    fetch("/api/dashboard/" + boardId)
         .then(function (r) { return r.json(); })
         .then(function (schema) {
             document.getElementById("board-title").textContent = schema.name;
@@ -137,7 +137,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     }
 
     function loadData(comp) {
-        authFetch("/api/component/data/" + boardId + "/" + comp.id)
+        fetch("/api/component/data/" + boardId + "/" + comp.id)
             .then(function (r) { return r.json(); })
             .then(function (data) { renderComponent(comp, data); })
             .catch(function (err) {

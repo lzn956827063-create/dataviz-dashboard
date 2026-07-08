@@ -156,7 +156,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
 
     // ── Board list ───────────────────────────────────────────
     function loadBoardList() {
-        authFetch("/api/dashboard/list")
+        fetch("/api/dashboard/list")
             .then(function (r) { return r.json(); })
             .then(function (boards) {
                 var container = document.getElementById("board-list");
@@ -178,7 +178,9 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
                     btn.addEventListener("click", function () {
                         var id = this.getAttribute("data-id");
                         if (!confirm("确定删除该看板吗？此操作不可撤销。")) return;
-                        authFetch("/api/dashboard/" + id, { method: "DELETE" })
+                        var token = localStorage.getItem("dv_token");
+                        var headers = token ? {"Authorization": "Bearer " + token} : {};
+                        fetch("/api/dashboard/" + id, { method: "DELETE", headers: headers })
                             .then(function () { loadBoardList(); });
                     });
                 });
