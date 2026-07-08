@@ -23,6 +23,8 @@ def insert(table, **kwargs):
 
 # Ensure tables exist — create app context to let SQLAlchemy do it
 from app import create_app
+from app.db.models import User
+from app.db.database import db
 app = create_app()
 ctx = app.app_context()
 ctx.push()
