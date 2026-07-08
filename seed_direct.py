@@ -38,45 +38,14 @@ for t in ("demo_sales", "demo_users", "demo_servers"):
     db.session.execute(db.text(f"DROP TABLE IF EXISTS {t}"))
 db.session.commit()
 
-# Create sample data via raw SQL (one-shot)
-db.session.execute(db.text("""
-CREATE TABLE demo_sales (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    month TEXT NOT NULL, category TEXT NOT NULL, amount REAL NOT NULL
-);
-INSERT INTO demo_sales VALUES
-    (1,'2026-01','电子产品',125000),(2,'2026-02','电子产品',138000),(3,'2026-03','电子产品',152000),
-    (4,'2026-04','电子产品',147000),(5,'2026-05','电子产品',169000),(6,'2026-06','电子产品',183000),
-    (7,'2026-01','服装鞋帽',82000),(8,'2026-02','服装鞋帽',79000),(9,'2026-03','服装鞋帽',91000),
-    (10,'2026-04','服装鞋帽',88000),(11,'2026-05','服装鞋帽',96000),(12,'2026-06','服装鞋帽',102000),
-    (13,'2026-01','食品饮料',65000),(14,'2026-02','食品饮料',68000),(15,'2026-03','食品饮料',72000),
-    (16,'2026-04','食品饮料',71000),(17,'2026-05','食品饮料',75000),(18,'2026-06','食品饮料',80000),
-    (19,'2026-01','家居用品',45000),(20,'2026-02','家居用品',48000),(21,'2026-03','家居用品',52000),
-    (22,'2026-04','家居用品',50000),(23,'2026-05','家居用品',55000),(24,'2026-06','家居用品',60000);
-"""))
-db.session.execute(db.text("""
-CREATE TABLE demo_users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    channel TEXT NOT NULL, user_type TEXT NOT NULL, count INTEGER NOT NULL
-);
-INSERT INTO demo_users VALUES
-    (1,'搜索引擎','新用户',3200),(2,'社交媒体','新用户',2800),(3,'直接访问','新用户',1500),
-    (4,'邮件营销','新用户',900),(5,'其他渠道','新用户',600),
-    (6,'搜索引擎','老用户',4500),(7,'社交媒体','老用户',3200),(8,'直接访问','老用户',2800),
-    (9,'邮件营销','老用户',1800),(10,'其他渠道','老用户',700);
-"""))
-db.session.execute(db.text("""
-CREATE TABLE demo_servers (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    name TEXT NOT NULL, cpu_pct REAL NOT NULL, mem_pct REAL NOT NULL,
-    disk_pct REAL NOT NULL, status TEXT NOT NULL
-);
-INSERT INTO demo_servers VALUES
-    (1,'Web-01',32.5,58.2,45.0,'正常'),(2,'Web-02',28.1,52.8,40.3,'正常'),
-    (3,'Web-03',35.7,61.4,47.2,'正常'),(4,'DB-Master',45.2,78.9,62.5,'警告'),
-    (5,'DB-Slave',22.3,55.1,38.7,'正常'),(6,'Cache-01',15.8,42.3,25.1,'正常'),
-    (7,'MQ-01',18.9,35.6,30.2,'正常'),(8,'Log-01',12.3,28.7,55.8,'正常');
-"""))
+# Create sample data tables (split DDL from DML)
+db.session.execute(db.text("CREATE TABLE demo_sales (id INTEGER PRIMARY KEY AUTOINCREMENT, month TEXT NOT NULL, category TEXT NOT NULL, amount REAL NOT NULL)"))
+db.session.execute(db.text("INSERT INTO demo_sales SELECT 1,'2026-01','电子产品',125000 UNION ALL SELECT 2,'2026-02','电子产品',138000 UNION ALL SELECT 3,'2026-03','电子产品',152000 UNION ALL SELECT 4,'2026-04','电子产品',147000 UNION ALL SELECT 5,'2026-05','电子产品',169000 UNION ALL SELECT 6,'2026-06','电子产品',183000 UNION ALL SELECT 7,'2026-01','服装鞋帽',82000 UNION ALL SELECT 8,'2026-02','服装鞋帽',79000 UNION ALL SELECT 9,'2026-03','服装鞋帽',91000 UNION ALL SELECT 10,'2026-04','服装鞋帽',88000 UNION ALL SELECT 11,'2026-05','服装鞋帽',96000 UNION ALL SELECT 12,'2026-06','服装鞋帽',102000 UNION ALL SELECT 13,'2026-01','食品饮料',65000 UNION ALL SELECT 14,'2026-02','食品饮料',68000 UNION ALL SELECT 15,'2026-03','食品饮料',72000 UNION ALL SELECT 16,'2026-04','食品饮料',71000 UNION ALL SELECT 17,'2026-05','食品饮料',75000 UNION ALL SELECT 18,'2026-06','食品饮料',80000 UNION ALL SELECT 19,'2026-01','家居用品',45000 UNION ALL SELECT 20,'2026-02','家居用品',48000 UNION ALL SELECT 21,'2026-03','家居用品',52000 UNION ALL SELECT 22,'2026-04','家居用品',50000 UNION ALL SELECT 23,'2026-05','家居用品',55000 UNION ALL SELECT 24,'2026-06','家居用品',60000"))
+db.session.execute(db.text("CREATE TABLE demo_users (id INTEGER PRIMARY KEY AUTOINCREMENT, channel TEXT NOT NULL, user_type TEXT NOT NULL, count INTEGER NOT NULL)"))
+db.session.execute(db.text("INSERT INTO demo_users SELECT 1,'搜索引擎','新用户',3200 UNION ALL SELECT 2,'社交媒体','新用户',2800 UNION ALL SELECT 3,'直接访问','新用户',1500 UNION ALL SELECT 4,'邮件营销','新用户',900 UNION ALL SELECT 5,'其他渠道','新用户',600 UNION ALL SELECT 6,'搜索引擎','老用户',4500 UNION ALL SELECT 7,'社交媒体','老用户',3200 UNION ALL SELECT 8,'直接访问','老用户',2800 UNION ALL SELECT 9,'邮件营销','老用户',1800 UNION ALL SELECT 10,'其他渠道','老用户',700"))
+db.session.execute(db.text("CREATE TABLE demo_servers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, cpu_pct REAL NOT NULL, mem_pct REAL NOT NULL, disk_pct REAL NOT NULL, status TEXT NOT NULL)"))
+db.session.execute(db.text("INSERT INTO demo_servers SELECT 1,'Web-01',32.5,58.2,45.0,'正常' UNION ALL SELECT 2,'Web-02',28.1,52.8,40.3,'正常' UNION ALL SELECT 3,'Web-03',35.7,61.4,47.2,'正常' UNION ALL SELECT 4,'DB-Master',45.2,78.9,62.5,'警告' UNION ALL SELECT 5,'DB-Slave',22.3,55.1,38.7,'正常' UNION ALL SELECT 6,'Cache-01',15.8,42.3,25.1,'正常' UNION ALL SELECT 7,'MQ-01',18.9,35.6,30.2,'正常' UNION ALL SELECT 8,'Log-01',12.3,28.7,55.8,'正常'"))
+
 db.session.commit()
 print("Sample data tables created")
 
