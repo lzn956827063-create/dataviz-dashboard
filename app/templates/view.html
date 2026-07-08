@@ -82,7 +82,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
         return fetch(url, opts);
     }
 
-    // Check auth state
+    // Check auth state (show user if logged in, but don't require it)
     var user = JSON.parse(localStorage.getItem("dv_user") || "null");
     if (user) {
         document.getElementById("user-info").textContent = user.username;
@@ -90,7 +90,7 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
         document.getElementById("logout-btn").addEventListener("click", function () {
             localStorage.removeItem("dv_token");
             localStorage.removeItem("dv_user");
-            window.location.href = "/login";
+            window.location.href = "/";
         });
     }
 

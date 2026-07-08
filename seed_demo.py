@@ -1,4 +1,4 @@
-"""Seed demo dashboards with meaningful sample data."""
+"""Seed demo dashboards for public showcase.  No login required for demo data."""
 import json
 import sqlite3
 import urllib.request
@@ -25,15 +25,15 @@ def api(method, path, data=None):
         print(f"  HTTP {e.code}: {e.read().decode()}")
         raise
 
-# Login as admin
-print("Logging in as admin...")
+# Login as admin (only needed for cleanup)
+print("Logging in as admin (for cleanup)...")
 try:
-    r = api("POST", "/api/auth/login", {"username": "admin", "password": "dv2026!Admin"})
+    r = api("POST", "/api/auth/login", {"username": "admin", "password": "admin123"})
     TOKEN = r["token"]
     print(f"  Logged in as {r['user']['username']}")
 except Exception as e:
     print(f"  Login failed, trying register: {e}")
-    r = api("POST", "/api/auth/register", {"username": "admin", "password": "dv2026!Admin"})
+    r = api("POST", "/api/auth/register", {"username": "admin", "password": "admin123"})
     TOKEN = r["token"]
     print(f"  Registered and logged in")
 
@@ -265,12 +265,12 @@ board4 = api("POST", "/api/dashboard", {
 })
 print(f"Dashboard 'GitHub 项目数据' created: #{board4['id']}")
 
-# ── 7. Mark the sales & server dashboards as published ─────
-for bid in [board1["id"], board2["id"], board3["id"]]:
+# ── 7. Mark demos as published + is_demo ───────────────────
+for bid in [board1["id"], board2["id"], board3["id"], board4["id"]]:
     board = api("GET", f"/api/dashboard/{bid}")
     board["canvas_json"]["version"] = 1
-    api("PUT", f"/api/dashboard/{bid}", {"name": board["name"], "canvas_json": board["canvas_json"], "change_note": "Published"})
-    print(f"Published board #{bid}")
+    api("PUT", f"/api/dashboard/{bid}", {"name": board["name"], "canvas_json": board["canvas_json"], "change_note": "Published", "is_demo": True})
+    print(f"Published demo board #{bid}")
 
 print("\n=== ALL DONE ===")
 print("Demo dashboards:")

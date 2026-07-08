@@ -22,7 +22,7 @@ def _seed_demo():
     # Default admin user
     if User.query.first() is None:
         admin = User(username="admin")
-        admin.set_password("dv2026!Admin")
+        admin.set_password("admin123")
         db.session.add(admin)
 
     db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "dataviz.db")
@@ -46,5 +46,5 @@ def _seed_demo():
         ],
     }
 
-    db.session.add(Dashboard(name="Demo 运维概览", canvas_json=demo, is_published=True))
+    db.session.add(Dashboard(name="Demo 运维概览", canvas_json=demo, is_published=True, is_demo=True))
     db.session.commit()

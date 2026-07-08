@@ -46,6 +46,7 @@ class Dashboard(db.Model):
     description = db.Column(db.Text, default="")
     canvas_json = db.Column(db.JSON, nullable=False, default=dict)
     is_published = db.Column(db.Boolean, default=False)
+    is_demo = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc),
                            onupdate=lambda: datetime.now(timezone.utc))
@@ -53,7 +54,9 @@ class Dashboard(db.Model):
     def to_dict(self):
         return {"id": self.id, "name": self.name, "description": self.description,
                 "canvas_json": self.canvas_json, "is_published": self.is_published,
-                "created_at": self.created_at.isoformat() if self.created_at else None}
+                "is_demo": self.is_demo,
+                "created_at": self.created_at.isoformat() if self.created_at else None,
+                "updated_at": self.updated_at.isoformat() if self.updated_at else None}
 
 
 class DashboardHistory(db.Model):

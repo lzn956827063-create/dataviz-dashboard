@@ -6,6 +6,13 @@ from app.services.auth import login_required
 
 dashboard_bp = Blueprint("dashboard", __name__)
 
+# ── Public demo dashboards — no login required ─────────────
+@dashboard_bp.route("/api/dashboard/demos")
+def list_demos():
+    """Public demo dashboards visible to everyone."""
+    boards = Dashboard.query.filter_by(is_demo=True).order_by(Dashboard.id).all()
+    return jsonify([r.to_dict() for r in boards])
+
 # ── Dashboard CRUD ─────────────────────────────────────────
 
 @dashboard_bp.route("/api/dashboard/list")
@@ -47,6 +54,10 @@ def update_dashboard(board_id):
         canvas_json=board.canvas_json, change_note=data.get("change_note", "")))
     board.canvas_json = data["canvas_json"]
     board.name = data.get("name", board.name)
+    if "is_demo" in data:
+        board.is_demo = data["is_demo"]
+    if "is_published" in data:
+        board.is_published = data["is_published"]
     db.session.commit()
     return jsonify(board.to_dict())
 

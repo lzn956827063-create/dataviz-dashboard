@@ -65,8 +65,8 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
         <h1>DataViz Dashboard</h1>
         <p>企业级低代码可视化数据看板平台 — Schema 驱动、通用数据桥接、动态 ECharts 渲染、版本回滚</p>
         <div class="hero-actions">
-            <a href="/builder" class="btn btn-primary">搭建看板</a>
-            <a href="/view/1" class="btn btn-glass">查看 Demo</a>
+            <a href="#demos" class="btn btn-primary">&#128064; 查看 Demo</a>
+            <a href="/builder" class="btn btn-glass">&#128736; 搭建看板</a>
             <span id="auth-action"></span>
         </div>
     </header>
@@ -74,24 +74,29 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     <div class="features">
         <div class="feature-card">
             <div class="feature-icon">&#128202;</div>
-            <h3>Schema 驱动</h3>
-            <p>通过 JSON Schema 描述数据源、图表类型和布局，前后端解耦，动态渲染</p>
+            <h3>Schema &#x9a71;&#x52a8;</h3>
+            <p>&#x901a;&#x8fc7; JSON Schema &#x63cf;&#x8ff0;&#x6570;&#x636e;&#x6e90;&#x3001;&#x56fe;&#x8868;&#x7c7b;&#x578b;&#x548c;&#x5e03;&#x5c40;&#xff0c;&#x524d;&#x540e;&#x7aef;&#x89e3;&#x8026;&#xff0c;&#x52a8;&#x6001;&#x6e32;&#x67d3;</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon">&#128279;</div>
-            <h3>通用数据桥</h3>
-            <p>支持 MySQL / PostgreSQL / SQLite / HTTP API 异构数据源，SQL 标准化归一</p>
+            <h3>&#x901a;&#x7528;&#x6570;&#x636e;&#x6865;</h3>
+            <p>&#x652f;&#x6301; MySQL / PostgreSQL / SQLite / HTTP API &#x5f02;&#x6784;&#x6570;&#x636e;&#x6e90;&#xff0c;SQL &#x6807;&#x51c6;&#x5316;&#x5f52;&#x4e00;</p>
         </div>
         <div class="feature-card">
             <div class="feature-icon">&#9194;</div>
-            <h3>版本回滚</h3>
-            <p>每次保存自动生成版本快照，一键回滚到任意历史版本</p>
+            <h3>&#x7248;&#x672c;&#x56de;&#x6eda;</h3>
+            <p>&#x6bcf;&#x6b21;&#x4fdd;&#x5b58;&#x81ea;&#x52a8;&#x751f;&#x6210;&#x7248;&#x672c;&#x5feb;&#x7167;&#xff0c;&#x4e00;&#x952e;&#x56de;&#x6eda;&#x5230;&#x4efb;&#x610f;&#x5386;&#x53f2;&#x7248;&#x672c;</p>
         </div>
     </div>
 
-    <div class="board-list" id="board-list-section">
-        <h2>所有看板</h2>
-        <div id="board-list" style="color:var(--text-muted);text-align:center;padding:20px;">加载中...</div>
+    <div class="board-list" id="demos-section">
+        <h2>&#128202; &#x6f14;&#x793a;&#x770b;&#x677f;</h2>
+        <div id="demo-list" style="color:var(--text-muted);text-align:center;padding:20px;">&#x52a0;&#x8f7d;&#x4e2d;...</div>
+    </div>
+
+    <div class="board-list" id="board-list-section" style="display:none">
+        <h2>&#x6211;&#x7684;&#x770b;&#x677f;</h2>
+        <div id="board-list" style="color:var(--text-muted);text-align:center;padding:20px;">&#x52a0;&#x8f7d;&#x4e2d;...</div>
     </div>
 </div>
 
@@ -150,18 +155,43 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
     if (user) {
         authSpan.innerHTML = '<span style="color:var(--text-muted);font-size:0.85rem;margin-left:8px;">' + user.username + '</span>' +
             '<button class="btn btn-glass" onclick="localStorage.clear();window.location.href=\'/login\'" style="margin-left:8px;">退出</button>';
+        document.getElementById("board-list-section").style.display = "";
+        loadUserBoards();
     } else {
-        authSpan.innerHTML = '<a href="/login" class="btn btn-glass">登录</a>';
+        authSpan.innerHTML = '<a href="/login" class="btn btn-glass">登录管理</a>';
     }
 
-    // ── Board list ───────────────────────────────────────────
-    function loadBoardList() {
-        fetch("/api/dashboard/list")
+    // ── Public demo board list ────────────────────────────
+    function loadDemos() {
+        fetch("/api/dashboard/demos")
+            .then(function (r) { return r.json(); })
+            .then(function (boards) {
+                var container = document.getElementById("demo-list");
+                if (!boards.length) {
+                    container.innerHTML = '<div style="padding:20px;color:var(--text-muted)">暂无演示看板</div>';
+                    return;
+                }
+                container.innerHTML = boards.map(function (b) {
+                    return '<div class="board-item">' +
+                        '<div class="board-item-info"><h3>' + b.name + '</h3><span>Demo 看板 &#183; 公开访问</span></div>' +
+                        '<div class="board-item-actions">' +
+                        '<a href="/view/' + b.id + '" class="btn btn-sm">查看</a>' +
+                        '</div></div>';
+                }).join("");
+            });
+    }
+    loadDemos();
+
+    // ── User board list (login required) ──────────────────
+    function loadUserBoards() {
+        var token = localStorage.getItem("dv_token");
+        var headers = token ? {"Authorization": "Bearer " + token} : {};
+        fetch("/api/dashboard/list", { headers: headers })
             .then(function (r) { return r.json(); })
             .then(function (boards) {
                 var container = document.getElementById("board-list");
                 if (!boards.length) {
-                    container.innerHTML = '<div style="padding:20px;color:var(--text-muted)">还没有看板，点击上方按钮创建</div>';
+                    container.innerHTML = '<div style="padding:20px;color:var(--text-muted)">还没有看板，点击上方"搭建看板"开始创建</div>';
                     return;
                 }
                 container.innerHTML = boards.map(function (b) {
@@ -178,15 +208,12 @@ body { font-family: var(--font); background: var(--bg); color: var(--text); min-
                     btn.addEventListener("click", function () {
                         var id = this.getAttribute("data-id");
                         if (!confirm("确定删除该看板吗？此操作不可撤销。")) return;
-                        var token = localStorage.getItem("dv_token");
-                        var headers = token ? {"Authorization": "Bearer " + token} : {};
                         fetch("/api/dashboard/" + id, { method: "DELETE", headers: headers })
-                            .then(function () { loadBoardList(); });
+                            .then(function () { loadUserBoards(); });
                     });
                 });
             });
     }
-    loadBoardList();
 })();
 </script>
 </body>
