@@ -32,9 +32,16 @@ conn.execute("DELETE FROM t_dashboard_history")
 conn.execute("DELETE FROM t_dashboard WHERE is_demo = 1")
 conn.execute("DELETE FROM t_datasource")
 
-# Admin password reset to admin123
-conn.execute("UPDATE t_user SET password_hash = ? WHERE username = ?",
-             ("scrypt:32768:8:1$D3uRF6BVy5qZcuDH$1d2f2a9d1a92de8fca9a3f20a0f4f3b29e02a1a7c3b6c0e9f4a613260c3ebd2bd6c9e5a2b7e62cf8d3f7a99b4c2d5e6f2e1a0b3c7d8e5f9a6b3c1d4e7", "admin"))
+# Admin password reset to admin123 (use proper werkzeug hash)
+admin = User.query.filter_by(username="admin").first()
+if admin:
+    admin.set_password("admin123")
+else:
+    admin = User(username="admin")
+    admin.set_password("admin123")
+    db.session.add(admin)
+db.session.commit()
+print("admin password set to: admin123")
 
 # ── 0. Seed sample data tables into SQLite ──────────────
 conn.executescript("""
