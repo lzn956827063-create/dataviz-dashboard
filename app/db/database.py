@@ -9,21 +9,30 @@ def init_db(app: Flask):
     with app.app_context():
         from app.db.models import Datasource, Dashboard, DashboardHistory  # noqa
         db.create_all()
+        _ensure_admin()
         _seed_demo()
+
+
+def _ensure_admin():
+    """Always ensure admin/admin123 user exists."""
+    from app.db.models import User
+
+    admin = User.query.filter_by(username="admin").first()
+    if admin is None:
+        admin = User(username="admin")
+        admin.set_password("admin123")
+        db.session.add(admin)
+    else:
+        admin.set_password("admin123")  # ensure password is always admin123
+    db.session.commit()
 
 
 def _seed_demo():
     import os
-    from app.db.models import Dashboard, Datasource, User
+    from app.db.models import Dashboard, Datasource
 
     if Dashboard.query.first() is not None:
         return
-
-    # Default admin user
-    if User.query.first() is None:
-        admin = User(username="admin")
-        admin.set_password("admin123")
-        db.session.add(admin)
 
     db_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "dataviz.db")
 

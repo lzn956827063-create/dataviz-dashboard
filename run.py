@@ -1,5 +1,8 @@
 """Entry point for DataViz Dashboard."""
 import os
+from dotenv import load_dotenv
+load_dotenv()  # load .env file before creating app
+
 from app import create_app
 
 app = create_app()
